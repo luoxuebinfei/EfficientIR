@@ -12,6 +12,49 @@ utils = Utils(config)
 Ui_MainWindow, QtBaseClass = uic.loadUiType(config['ui'])
 
 
+# 建立索引的后台线程类
+class IndexThread(QtCore.QThread):
+    update_signal = QtCore.pyqtSignal(str)
+    progress_signal = QtCore.pyqtSignal(int)  # 进度信号
+    completed_signal = QtCore.pyqtSignal()     # 完成信号
+
+    def __init__(self, utils_instance):
+        QtCore.QThread.__init__(self)
+        self.utils = utils_instance
+
+    def run(self):
+        self.utils.remove_nonexists()
+        self.progress_signal.emit(0)
+        need_indexs = []
+        for image_dir in config['search_dir']:
+            need_index = self.utils.index_target_dir(image_dir)
+            need_indexs.extend(need_index)
+        if len(need_index) == 0:
+            self.progress_signal.emit(100)
+        for i, (idx, fpath) in enumerate(need_indexs):
+            self.utils.update_ir_index(idx, fpath)
+            progress = int((i + 1) / len(need_indexs) * 100)
+            # 更新进度条信号发射到主线程
+            self.progress_signal.emit(progress)
+        # for image_dir in config['search_dir']:
+        #     need_index = self.utils.index_target_dir(image_dir)
+        #     # 更新进度条信号发射到主线程
+        #     self.progress_signal.emit(0)
+        #     total_files = len(need_index)
+        #     if total_files == 0:
+        #         self.progress_signal.emit(100)
+        #     # 更新索引并更新进度条
+        #     for idx, fpath in need_index:
+        #         self.utils.update_ir_index_test(idx, fpath)
+        #         progress = int((idx + 1) / total_files * 100)
+        #         # 更新进度条信号发射到主线程
+        #         self.progress_signal.emit(progress)
+        self.utils.exists_index = self.utils.get_exists_index()
+        self.completed_signal.emit()  # 发出完成信号
+        self.requestInterruption() # 退出线程，防止内存泄漏
+        return
+
+
 class MainUI(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def __init__(self):
@@ -20,6 +63,8 @@ class MainUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self._bind_ui_()
         self._init_ui_()
+        self.index_thread = None  # 保存线程对象的引用
+        self.progress_dialog = None  # 进度条对话框的引用
 
 
     def _bind_ui_(self):
@@ -45,6 +90,7 @@ class MainUI(QtWidgets.QMainWindow, Ui_MainWindow):
         self.searchDirTable.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.searchDirTable.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.update_dir_table()
+        self.progress_dialog = None  # 添加这一行，确保 self.progress_dialog 被正确初始化为 None
 
 
     def openfile(self):
@@ -133,12 +179,45 @@ class MainUI(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
     def sync_index(self):
-        utils.remove_nonexists()
-        for image_dir in config['search_dir']:
-            need_index = utils.index_target_dir(image_dir)
-            utils.update_ir_index(need_index)
-        self.exists_index = utils.get_exists_index()
-        QtWidgets.QMessageBox.information(self, '提示', '索引同步已完成')
+        # 创建并启动索引同步的后台线程
+        if self.index_thread is None or not self.index_thread.isRunning():
+            self.index_thread = IndexThread(utils)
+            # self.index_thread.update_signal.connect(self.update_status)
+            self.progress_dialog = QtWidgets.QProgressDialog(self)  # 创建进度条对话框
+            self.progress_dialog.setWindowTitle("更新索引")  # 设置窗口标题
+            self.progress_dialog.setCancelButtonText("取消")
+            self.progress_dialog.setWindowModality(QtCore.Qt.WindowModal)  # 将进度条对话框设置为模态
+            self.progress_dialog.setAutoClose(True)  # 完成后自动关闭
+            self.progress_dialog.show()  # 显示进度条对话框
+            self.index_thread.progress_signal.connect(self.update_progress_bar)
+            self.index_thread.completed_signal.connect(self.show_completed_message)
+            self.index_thread.start()
+        else:
+            QtWidgets.QMessageBox.information(self, '提示', '索引更新线程已经在运行')
+
+    def update_status(self, status):
+        # 更新UI界面上的状态
+        if status == "完成索引更新":
+            QtWidgets.QMessageBox.information(self, '提示', '索引已完成')
+
+    def show_completed_message(self):
+        # 显示索引更新完成的提示信息
+        QtWidgets.QMessageBox.information(self, '提示', '索引更新完成')
+        # 退出建立索引子线程
+        self.index_thread.quit()
+        self.index_thread.wait()
+        self.index_thread.finished.connect(self.index_thread.deleteLater)
+        self.exists_index = utils.get_exists_index() # 重新获取已存在索引,解决建立索引后立即执行搜索大概率不生效的问题
+
+    def update_progress_bar(self, progress):
+        self.progress_dialog.setValue(progress)
+
+    def closeEvent(self, event):
+        # 在窗口关闭时结束后台线程
+        if self.index_thread is not None and self.index_thread.isRunning():
+            self.index_thread.quit()
+            self.index_thread.wait()
+        event.accept()
 
 
     def save_settings(self):

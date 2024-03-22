@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "efficientir"
+version = "0.1.0"
+description = ""
+authors = ["luoxuebinfei <1732806519@qq.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.9.13"
+fastapi = "^0.110.0"
+numpy = "1.23.0"
+onnx = "^1.12.0"
+onnxruntime = "^1.11.1"
+Pillow = "^9.1.1"
+tqdm = "^4.64.0"
+hnswlib = "^0.6.2"
+PyQt5 = "5.15.2"
+pyqt5-tools = "5.15.2.3.2"
+
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

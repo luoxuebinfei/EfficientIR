@@ -3,6 +3,9 @@ import json
 from tqdm import tqdm
 from efficient_ir import EfficientIR
 
+from PyQt5.QtWidgets import QProgressDialog,QMessageBox,QApplication
+import PyQt5.QtCore as QtCore
+
 
 NOTEXISTS = 'NOTEXISTS'
 
@@ -82,14 +85,12 @@ class Utils:
         with open(self.metainfo_path, 'wb') as wp:
             wp.write(json.dumps(metainfo,ensure_ascii=False).encode('UTF-8'))
         return [(i,exists_index[i]) for i in need_index]
-
-
-    def update_ir_index(self, need_index):
-        for idx, fpath in tqdm(need_index, ascii=True, desc='更新索引记录'):
-            fv = self.ir_engine.get_fv(fpath)
-            if fv is None:
-                continue
-            self.ir_engine.add_fv(fv, idx)
+    
+    def update_ir_index(self, idx, fpath):
+        fv = self.ir_engine.get_fv(fpath)
+        if fv is None:
+            return
+        self.ir_engine.add_fv(fv, idx)
         self.ir_engine.save_index()
 
 
