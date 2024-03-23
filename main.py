@@ -4,10 +4,20 @@ import json
 from PyQt5 import QtCore,QtWidgets,uic
 from utils import Utils
 
+def resource_path(relative_path):
+    """获取程序中所需文件资源的绝对路径"""
+    try:
+        # PyInstaller创建临时文件夹,将路径存储于_MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
-config_path = 'gui/config.json'
+config_path = resource_path('gui/config.json')
 config = json.loads(open(config_path,'rb').read())
+config['index_path'],config['model_path'],config['exists_index_path'],config['metainfo_path'],config['ui'] = resource_path(config['index_path']),resource_path(config['model_path']),resource_path(config['exists_index_path']),resource_path(config['metainfo_path']),resource_path(config['ui'])
 utils = Utils(config)
 Ui_MainWindow, QtBaseClass = uic.loadUiType(config['ui'])
 

@@ -133,3 +133,6 @@ hnswlib/
 
 # index file
 index/
+
+# 可执行文件
+output/

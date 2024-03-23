@@ -16,6 +16,7 @@ tqdm = "^4.64.0"
 hnswlib = "^0.6.2"
 PyQt5 = "5.15.2"
 pyqt5-tools = "5.15.2.3.2"
+auto-py-to-exe = "^2.43.1"
 
 
 
