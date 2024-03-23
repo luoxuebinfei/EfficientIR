@@ -29,7 +29,7 @@
        <enum>QTabWidget::West</enum>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <property name="elideMode">
        <enum>Qt::ElideNone</enum>
@@ -55,7 +55,10 @@
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QLineEdit" name="filePath">
+         <widget class="ImageLineEdit" name="filePath">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
           <property name="font">
            <font>
             <family>微软雅黑</family>
@@ -63,6 +66,15 @@
             <weight>75</weight>
             <bold>true</bold>
            </font>
+          </property>
+          <property name="inputMask">
+           <string/>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="placeholderText">
+           <string>拖拽粘贴图片到这</string>
           </property>
          </widget>
         </item>
@@ -182,60 +194,6 @@
        <layout class="QGridLayout" name="gridLayout_4">
         <item row="0" column="0">
          <layout class="QGridLayout" name="gridLayout_3">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_7">
-            <property name="minimumSize">
-             <size>
-              <width>380</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="font">
-             <font>
-              <family>微软雅黑</family>
-              <pointsize>11</pointsize>
-              <weight>50</weight>
-              <bold>false</bold>
-             </font>
-            </property>
-            <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:11pt; color:#ff0000;&quot;&gt;注意：&lt;/span&gt;&lt;span style=&quot; font-size:11pt; color:#000000;&quot;&gt;查重过程需要耗费数秒至数分钟，请耐心等待&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0" colspan="8">
-           <widget class="QTableWidget" name="resultTableDuplicate">
-            <property name="font">
-             <font>
-              <family>微软雅黑</family>
-              <pointsize>10</pointsize>
-              <weight>50</weight>
-              <bold>false</bold>
-             </font>
-            </property>
-            <property name="columnCount">
-             <number>3</number>
-            </property>
-            <column>
-             <property name="text">
-              <string>文件路径 A</string>
-             </property>
-            </column>
-            <column>
-             <property name="text">
-              <string>文件路径 B</string>
-             </property>
-            </column>
-            <column>
-             <property name="text">
-              <string>相似度</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-            </column>
-           </widget>
-          </item>
           <item row="0" column="7">
            <widget class="QPushButton" name="startSearchDuplicate">
             <property name="minimumSize">
@@ -293,24 +251,45 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="5">
-           <widget class="QLabel" name="label_6">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_7">
+            <property name="minimumSize">
+             <size>
+              <width>380</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <family>微软雅黑</family>
+              <pointsize>11</pointsize>
+              <weight>50</weight>
+              <bold>false</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:11pt; color:#ff0000;&quot;&gt;注意：&lt;/span&gt;&lt;span style=&quot; font-size:11pt; color:#000000;&quot;&gt;查重过程需要耗费数秒至数分钟，请耐心等待&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QLabel" name="label_5">
             <property name="maximumSize">
              <size>
-              <width>18</width>
+              <width>90</width>
               <height>16777215</height>
              </size>
             </property>
             <property name="font">
              <font>
               <family>微软雅黑</family>
-              <pointsize>12</pointsize>
+              <pointsize>11</pointsize>
               <weight>50</weight>
               <bold>false</bold>
              </font>
             </property>
             <property name="text">
-             <string>%</string>
+             <string>相似度阈值：</string>
             </property>
            </widget>
           </item>
@@ -344,25 +323,58 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="3">
-           <widget class="QLabel" name="label_5">
+          <item row="0" column="5">
+           <widget class="QLabel" name="label_6">
             <property name="maximumSize">
              <size>
-              <width>90</width>
+              <width>18</width>
               <height>16777215</height>
              </size>
             </property>
             <property name="font">
              <font>
               <family>微软雅黑</family>
-              <pointsize>11</pointsize>
+              <pointsize>12</pointsize>
               <weight>50</weight>
               <bold>false</bold>
              </font>
             </property>
             <property name="text">
-             <string>相似度阈值：</string>
+             <string>%</string>
             </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="8">
+           <widget class="QTableWidget" name="resultTableDuplicate">
+            <property name="font">
+             <font>
+              <family>微软雅黑</family>
+              <pointsize>10</pointsize>
+              <weight>50</weight>
+              <bold>false</bold>
+             </font>
+            </property>
+            <property name="columnCount">
+             <number>3</number>
+            </property>
+            <column>
+             <property name="text">
+              <string>文件路径 A</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>文件路径 B</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>相似度</string>
+             </property>
+             <property name="textAlignment">
+              <set>AlignCenter</set>
+             </property>
+            </column>
            </widget>
           </item>
          </layout>
@@ -519,6 +531,13 @@
    </layout>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ImageLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header location="global">gui.MyWidget</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

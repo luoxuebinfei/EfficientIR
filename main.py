@@ -36,19 +36,6 @@ class IndexThread(QtCore.QThread):
             progress = int((i + 1) / len(need_indexs) * 100)
             # 更新进度条信号发射到主线程
             self.progress_signal.emit(progress)
-        # for image_dir in config['search_dir']:
-        #     need_index = self.utils.index_target_dir(image_dir)
-        #     # 更新进度条信号发射到主线程
-        #     self.progress_signal.emit(0)
-        #     total_files = len(need_index)
-        #     if total_files == 0:
-        #         self.progress_signal.emit(100)
-        #     # 更新索引并更新进度条
-        #     for idx, fpath in need_index:
-        #         self.utils.update_ir_index_test(idx, fpath)
-        #         progress = int((idx + 1) / total_files * 100)
-        #         # 更新进度条信号发射到主线程
-        #         self.progress_signal.emit(progress)
         self.utils.exists_index = self.utils.get_exists_index()
         self.completed_signal.emit()  # 发出完成信号
         self.requestInterruption() # 退出线程，防止内存泄漏
@@ -111,14 +98,21 @@ class MainUI(QtWidgets.QMainWindow, Ui_MainWindow):
         row = info.row()
         os.startfile(self.resultTableDuplicate.item(row, col).text())
 
-
+    # 搜索图片
     def start_search(self):
+        self.resultTable.setRowCount(0)     # 清空表格
         if not hasattr(self, 'input_path'):
-            self.openfile()
+            if self.filePath.text() == '':
+                self.openfile()
+            else:
+                self.input_path = [self.filePath.text()]
+        self.input_path= [self.filePath.text()]
+        if self.input_path[0] == '':
+            delattr(self, 'input_path')
+            return
         if (config['search_dir'] == []) or (not os.path.exists(utils.exists_index_path)):
             QtWidgets.QMessageBox.information(self, '提示', '索引都没有建搜你🐎 搜')
             return
-        self.resultTable.setRowCount(0)                                                                 # 清空表格
         nc = self.resultCount.value()
         nc = nc if nc <= len(self.exists_index) else len(self.exists_index)
         results = utils.checkout(self.input_path[0], self.exists_index, nc)
@@ -132,7 +126,7 @@ class MainUI(QtWidgets.QMainWindow, Ui_MainWindow):
             self.resultTable.setItem(row,0,item_path)
             self.resultTable.setItem(row,1,item_sim)
 
-
+    # 检测图片是否重复
     def start_search_duplicate(self):
         if (config['search_dir'] == []) or (not os.path.exists(utils.exists_index_path)):
             QtWidgets.QMessageBox.information(self, '提示', '索引都没有建查你🐎 查')
