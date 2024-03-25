@@ -136,3 +136,6 @@ index/
 
 # 可执行文件
 output/
+
+# 缓存文件
+cache/
