@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import re
 import shutil
@@ -10,6 +11,9 @@ from fastapi.websockets import WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse
 import requests
 import uvicorn
+from pydantic import BaseModel
+from typing import Union
+from db_manager import DatabaseManager
 
 from utils import Utils
 
@@ -37,17 +41,20 @@ paths_to_convert = [
     'model_path',
     'exists_index_path',
     'metainfo_path',
+    'db_path',
     'ui']
 config.update({key: resource_path(config[key]) for key in paths_to_convert})
 utils = Utils(config)
+
+db = DatabaseManager(config['db_path'])
 
 
 def delete_old_files(directory):
     """删除创建超过一定时间的缓存文件"""
     # 获取当前时间
     current_time = time.time()
-    # 设置阈值为3小时
-    threshold = 3 * 3600
+    # 设置阈值为10分钟
+    threshold = 600
 
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
@@ -75,6 +82,7 @@ async def update_index():
         utils.update_ir_index(idx, fpath)
         progress = int((i + 1) / nc * 100)
         await connection_manager.send_message(str(progress))
+        await asyncio.sleep(0) # 插入一个小延迟，使得websocket能够正常发送消息
     utils.exists_index = utils.get_exists_index()
 
 
@@ -165,8 +173,19 @@ async def get_image(image_path: str):
     return FileResponse(image_path)
 
 
-@app.get("/addRecord/")
-async def addRecord(record: str, name: str, image_path: str):
+class RecordForm(BaseModel):
+    record: str  # 车牌名
+    name: str
+    image_path: str
+    mangneUrl: Union[str, None] = None
+    webUrl: Union[str, None] = None
+    note: Union[str, None] = None
+    resource_id: Union[int, None] = None  # 数据库resource表的ID
+    path_id: Union[int, None] = None  # 数据库path表的ID
+
+
+@app.post("/addRecord/")
+async def addRecord(rf: RecordForm):
     """添加记录"""
     if not os.path.exists(config["record_path"]):
         os.makedirs(config["record_path"])
@@ -179,6 +198,25 @@ async def addRecord(record: str, name: str, image_path: str):
                     config,
                     indent=2,
                     ensure_ascii=False).encode('UTF-8'))
+    if rf.resource_id is not None and rf.path_id is not None:
+        # 只有更新时才需要更新resource和path表
+        db.update_data(
+            'resource', f'title="{rf.record}",mangnetUrl="{rf.mangneUrl}",webUrl="{rf.webUrl}",note="{rf.note}"', f'id={rf.resource_id}')
+        path_res = db.query_data('path', f'id={rf.path_id}')
+        old_path = path_res[0][2]
+        new_path = os.path.join(os.path.dirname(
+            old_path), rf.record + os.path.splitext(old_path)[1])
+        db.update_data(
+            'path', f'title="{rf.record}",path="{new_path}"', f'id={rf.path_id}')
+        os.rename(old_path, new_path)
+        with open(config["exists_index_path"], 'r', encoding='utf-8') as f:
+            index_list = json.loads(f.read())
+        index_list = list(map(lambda file: file.replace(old_path, new_path), index_list))
+        with open(config["exists_index_path"], 'wb') as f:
+            f.write(json.dumps(index_list, indent=2,
+                     ensure_ascii=False).encode('UTF-8'))
+        await update_index()
+        return {"code": 200, "message": "Record updated successfully", "id": {"resource_id": rf.resource_id, "path_id": rf.path_id}}
     # 将不允许的字符替换为中文字符
     replacements = {
         '<': '《',
@@ -193,9 +231,9 @@ async def addRecord(record: str, name: str, image_path: str):
     }
     cleaned_record = re.sub(r'[<>:"/\\|?*]',
                             lambda m: replacements[m.group()],
-                            record.strip())  # 去除非法字符
+                            rf.record.strip())  # 去除非法字符
     # 获取文件名和文件后缀
-    base_name, ext = os.path.splitext(os.path.basename(name))
+    base_name, ext = os.path.splitext(os.path.basename(rf.name))
     new_filename = f'{cleaned_record}{ext}'
     new_path = os.path.join(config["record_path"], new_filename)
     # 如果文件已存在，则在文件名后添加标识符
@@ -204,11 +242,19 @@ async def addRecord(record: str, name: str, image_path: str):
         new_filename = f"{cleaned_record}（{index}）{ext}"
         new_path = os.path.join(config["record_path"], new_filename)
         index += 1
-    shutil.move(image_path, new_path)
+    shutil.move(rf.image_path, new_path)
 
     await update_index()
 
-    return {"code": 200, "message": "Record added successfully"}
+    if rf.resource_id is None and rf.path_id is None:
+        resource_id, path_id = db.insert_data(
+            (rf.record, rf.mangneUrl, rf.webUrl, rf.note, new_path))  # 插入数据
+    elif rf.resource_id is not None and rf.path_id is None:
+        resource_id, path_id = db.insert_data(
+            (rf.record, new_path, rf.resource_id),False
+        )
+
+    return {"code": 200, "message": "Record added successfully", "id": {"resource_id": resource_id, "path_id": path_id}}
 
 
 @app.websocket("/ws/{client_id}")
@@ -227,6 +273,11 @@ async def updateIndex():
     """更新索引"""
     await update_index()
     return {"code": 200, "message": "Index updated successfully"}
+
+@app.get("/getRecordInfo/")
+async def getRecordInfo(record: str):
+    """获取记录信息"""
+    return db.query_data('resource', f'title="{record}"')
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@
   "index_path": "index/index.bin",
   "exists_index_path": "index/name_index.json",
   "metainfo_path": "index/metainfo.json",
+  "db_path": "index/db.db",
   "record_path": "",
   "ui": "gui/simple.ui",
   "search_dir": []

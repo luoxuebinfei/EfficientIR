@@ -260,7 +260,10 @@
             >
           </div>
           <div class="">
-            <el-button text style="margin: 0 auto" @click="addRecord"
+            <el-button
+              text
+              style="margin: 0 auto"
+              @click="dialogRecordFormVisible=true"
               ><img
                 width="16"
                 height="16"
@@ -295,7 +298,7 @@
           </el-card>
         </div>
       </div>
-
+      <!-- 设置弹窗 -->
       <el-dialog v-model="dialogSettingsFormVisible" title="设置" width="500">
         <el-form :model="settingsForm">
           <el-form-item label="索引目录">
@@ -342,6 +345,37 @@
           </div>
         </template>
       </el-dialog>
+
+      <!-- 添加记录弹窗 -->
+      <el-dialog v-model="dialogRecordFormVisible" title="添加记录" width="500">
+        <el-form :model="recordForm" label-position="right" label-width="auto">
+          <el-form-item label="车牌名">
+            <el-input v-model="recordForm.record" @change="getRecordInfo" />
+          </el-form-item>
+          <el-form-item label="磁力链接">
+            <el-input
+              v-model="recordForm.mangneUrl"
+            />
+          </el-form-item>
+          <el-form-item label="网站链接">
+            <el-input v-model="recordForm.webUrl" />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input
+              v-model="recordForm.note"
+              type="textarea"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="dialogRecordFormVisible = false">取消</el-button>
+            <el-button type="primary" @click="addRecordDialog">
+              确定
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
     </div>
   </body>
 
@@ -378,7 +412,16 @@
           }, // 搜索结果
           flag: 1, // 控制页面显示
           dialogSettingsFormVisible: false, // 设置弹窗是否可见
+          dialogRecordFormVisible: false, // 添加记录弹窗是否可见
           settingsForm: {}, // 设置表单数据
+          recordForm: {
+            record: "",
+            name: "",
+            image_path: "",
+            mangneUrl: "",
+            webUrl: "",
+            note: "",
+          }, // 添加记录表单数据
           progressData: {
             num: 0,
             status: "",
@@ -417,10 +460,11 @@
         });
         const open_alert = (imageSrc) => {
           this.$alert(
-            `<div class='object-contain'><img class='object-contain' src='${imageSrc}'></img></div>`,
+            `<div class='object-contain paste-image'><img class='object-contain' src='${imageSrc}'></img></div>`,
             "📋 从剪贴板搜索",
             {
               dangerouslyUseHTMLString: true,
+              customClass: "paste-image",// 设置自定义类名
               confirmButtonText: "确定",
             }
           ).then(() => {
@@ -459,28 +503,6 @@
           /* 刷新 */
           window.location.reload();
         },
-        addRecord() {
-          /* 添加记录 */
-          this.$prompt("请输入车牌信息", "添加记录", {
-            confirmButtonText: "确定",
-            cancelButtonText: "取消",
-          }).then(({ value }) => {
-            axios
-              .get(this.local_server_url + "/addRecord/", {
-                params: {
-                  record: value,
-                  name: this.searchData["original_file"]["name"],
-                  image_path: this.searchData["original_file"]["path"],
-                },
-              })
-              .then((res) => {
-                this.$message({
-                  type: "success",
-                  message: "添加成功",
-                });
-              });
-          });
-        },
         updateIndex() {
           /* 更新索引 */
           const socket = new WebSocket(`${this.ws_server_url}/ws/1`);
@@ -502,6 +524,37 @@
           setTimeout(() => {
             this.progressData.num = 0;
           }, 3000);
+        },
+        getRecordInfo(){
+          /* 获取记录信息 */
+          axios.get(this.local_server_url + "/getRecordInfo/",{params: {"record":this.recordForm["record"]}}).then((res) => {
+            this.recordForm["resource_id"] = res.data[0][0];
+            this.recordForm["mangneUrl"] = res.data[0][2];
+            this.recordForm["webUrl"] = res.data[0][3];
+            this.recordForm["note"] = res.data[0][4];
+            
+          })
+        },
+        addRecordDialog() {
+          /* 添加记录对话框提交 */
+          this.recordForm["name"] = this.searchData["original_file"]["name"];
+            this.recordForm["image_path"] =
+              this.searchData["original_file"]["path"];
+            axios
+              .post(this.local_server_url + "/addRecord/", this.recordForm, {
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              })
+              .then((res) => {
+                this.dialogRecordFormVisible = false;
+                this.$message({
+                  type: "success",
+                  message: "添加成功",
+                });
+                this.recordForm["resource_id"] = res.data.id["resource_id"];
+                this.recordForm["path_id"] = res.data.id["path_id"];
+              });
         },
       },
     };
@@ -529,8 +582,8 @@
     body {
       height: 100%;
     }
-    /* 弹窗图片居中 */
-    .el-message-box__content {
+    /* 粘贴弹窗图片居中 */
+    .paste-image .el-message-box__content {
       display: grid;
     }
     .el-message-box__container {
